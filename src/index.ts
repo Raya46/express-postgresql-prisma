@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { authenticateToken } from "./middleware";
+import { google } from "googleapis";
 
 const express = require("express");
 const dotenv = require("dotenv");
@@ -10,6 +11,23 @@ const prisma = new PrismaClient();
 const app = express();
 dotenv.config();
 app.use(express.json());
+
+const oauth2Client = new google.auth.OAuth2(
+  process.env.CLIENT_ID,
+  process.env.CLIENT_SECRET,
+  "http://localhost:2000/auth/google/callback"
+);
+
+const scopes = [
+  "https://www.googleapis.com/auth/userinfo.email",
+  "https://www.googleapis.com/auth/userinfo.profile",
+];
+
+const authorizationUrl = oauth2Client.generateAuthUrl({
+  access_type: "offline",
+  scope: scopes,
+  include_granted_scopes: true,
+});
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
@@ -27,7 +45,7 @@ app.get("/products", authenticateToken, async (req: any, res: any) => {
 });
 
 // get by id
-app.get("/products/:id", async (req: any, res: any) => {
+app.get("/products/:id", authenticateToken, async (req: any, res: any) => {
   const _id = req.params.id;
   const productById = await prisma.product.findUnique({
     where: {
@@ -38,7 +56,7 @@ app.get("/products/:id", async (req: any, res: any) => {
 });
 
 // post/add product
-app.post("/add-products", async (req: any, res: any) => {
+app.post("/add-products", authenticateToken, async (req: any, res: any) => {
   const newProduct = req.body;
 
   const product = await prisma.product.create({
@@ -57,7 +75,7 @@ app.post("/add-products", async (req: any, res: any) => {
 });
 
 // update product
-app.put("/put-product/:id", async (req: any, res: any) => {
+app.put("/put-product/:id", authenticateToken, async (req: any, res: any) => {
   const _id = req.params.id;
   const newProduct = req.body;
   const updatedProduct = await prisma.product.update({
@@ -79,17 +97,22 @@ app.put("/put-product/:id", async (req: any, res: any) => {
 });
 
 // delete product
-app.delete("/delete-product/:id", async (req: any, res: any) => {
-  const _id = req.params.id;
-  const deletedProduct = await prisma.product.delete({
-    where: {
-      id: Number(_id),
-    },
-  });
-  res.send({
-    message: "success delete",
-  });
-});
+app.delete(
+  "/delete-product/:id",
+  authenticateToken,
+  async (req: any, res: any) => {
+    const _id = req.params.id;
+    const deletedProduct = await prisma.product.delete({
+      where: {
+        id: Number(_id),
+      },
+    });
+    res.send({
+      data: deletedProduct,
+      message: "success delete",
+    });
+  }
+);
 
 // register user
 app.post("/register", async (req: any, res: any) => {
@@ -115,7 +138,7 @@ app.post("/register", async (req: any, res: any) => {
 });
 
 // get user
-app.get("/users", async (_: any, res: any) => {
+app.get("/users", authenticateToken, async (_: any, res: any) => {
   const users = await prisma.user.findMany();
   res.status(200).send({ data: users });
 });
@@ -142,4 +165,59 @@ app.post("/login", async (req: any, res: any) => {
   });
 
   res.send({ token });
+});
+
+// google login
+app.get("/auth/google", (_: any, res: any) => {
+  res.redirect(authorizationUrl);
+});
+
+app.get("/auth/google/callback", async (req: any, res: any) => {
+  const { code } = req.query;
+
+  const { tokens } = await oauth2Client.getToken(code as string);
+
+  oauth2Client.setCredentials(tokens);
+
+  const oauth2 = google.oauth2({
+    auth: oauth2Client,
+    version: "v2",
+  });
+
+  const { data } = await oauth2.userinfo.get();
+
+  if (!data) {
+    return res.json({
+      data: data,
+    });
+  }
+
+  let user = await prisma.user.findUnique({
+    where: {
+      email: data.email,
+    },
+  });
+
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        name: data.name,
+        email: data.email,
+        password: " ",
+      },
+    });
+  }
+
+  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, {
+    expiresIn: "1h",
+  });
+
+  // res.redirect(`http://localhost:2000/auth-success?token=${token}`);
+  res.send({
+    data: {
+      name: data.name,
+      email: data.email,
+    },
+    token: token,
+  });
 });
