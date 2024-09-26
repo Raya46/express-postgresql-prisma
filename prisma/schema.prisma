@@ -26,4 +26,12 @@ model User {
   email    String @unique
   name     String
   password String
+  role     Role   @relation(fields: [role_id], references: [id])
+  role_id  Int
+}
+
+model Role {
+  id   Int    @id @default(autoincrement())
+  name String
+  user User[]
 }

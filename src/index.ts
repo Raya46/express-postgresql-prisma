@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { authenticateToken } from "./middleware";
+import { authenticateToken, authorizeRole } from "./middleware";
 import { google } from "googleapis";
 
 const express = require("express");
@@ -10,6 +10,7 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const app = express();
 dotenv.config();
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 const oauth2Client = new google.auth.OAuth2(
@@ -116,7 +117,7 @@ app.delete(
 
 // register user
 app.post("/register", async (req: any, res: any) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, role_id } = req.body;
 
   const hashedPassword = await bcrypt.hash(password, 10);
   try {
@@ -125,6 +126,7 @@ app.post("/register", async (req: any, res: any) => {
         name,
         email,
         password: hashedPassword,
+        role_id,
       },
     });
     res.status(201).send({
@@ -138,10 +140,15 @@ app.post("/register", async (req: any, res: any) => {
 });
 
 // get user
-app.get("/users", authenticateToken, async (_: any, res: any) => {
-  const users = await prisma.user.findMany();
-  res.status(200).send({ data: users });
-});
+app.get(
+  "/users",
+  authenticateToken,
+  authorizeRole("admin"),
+  async (_: any, res: any) => {
+    const users = await prisma.user.findMany();
+    res.status(200).send({ data: users });
+  }
+);
 
 // login
 app.post("/login", async (req: any, res: any) => {
@@ -199,11 +206,17 @@ app.get("/auth/google/callback", async (req: any, res: any) => {
   });
 
   if (!user) {
+    const userRole = await prisma.role.findFirst({
+      where: {
+        name: "user",
+      },
+    });
     user = await prisma.user.create({
       data: {
         name: data.name,
         email: data.email,
         password: " ",
+        role_id: userRole.id,
       },
     });
   }
@@ -219,5 +232,28 @@ app.get("/auth/google/callback", async (req: any, res: any) => {
       email: data.email,
     },
     token: token,
+  });
+});
+
+// cara mendapatkan user yang sedang login
+app.get("/me", authenticateToken, async (req: any, res: any) => {
+  const userId = req.user.userId;
+
+  const userLogin = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+  });
+
+  const roleUser = await prisma.role.findUnique({
+    where: {
+      id: userLogin.role_id,
+    },
+  });
+
+  res.json({
+    name: userLogin.name,
+    email: userLogin.email,
+    role: roleUser.name,
   });
 });
