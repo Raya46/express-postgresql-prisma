@@ -115,6 +115,63 @@ app.delete(
   }
 );
 
+// filtered product
+/*
+this code can sort & filtering:
+1. http://localhost:3000/products?page=2&perPage=5
+2. http://localhost:3000/products?sortBy=price&order=desc
+3. http://localhost:3000/products?name=laptop&minPrice=1000000 
+*/
+app.get("/filtered-product", async (req: any, res: any) => {
+  const {
+    page = 1,
+    perPage = 10,
+    sortBy = "name",
+    order = "asc",
+    name,
+    minPrice,
+    maxPrice,
+  } = req.query;
+
+  const pageNumber = parseInt(page as string) || 1;
+  const perPageNumber = parseInt(perPage as string) || 10;
+  const sortOrder = order == "desc" ? "desc" : "asc";
+
+  const filters: any = {};
+
+  if (name) {
+    filters.name = { contains: name, mode: "insensitive" };
+  }
+  if (minPrice) {
+    filters.price = { gte: parseFloat(minPrice as string) };
+    // take the minimum price >>
+  }
+  if (maxPrice) {
+    if (filters.price) filters.price = {};
+    filters.price = { lte: parseFloat(maxPrice as string) };
+    // take the << max price
+  }
+  try {
+    const totalProducts = await prisma.product.count({ where: filters });
+
+    const products = await prisma.product.findMany({
+      where: filters,
+      orderBy: { [sortBy as string]: sortOrder },
+      skip: (pageNumber - 1) * perPageNumber,
+      take: perPageNumber,
+    });
+
+    res.status(200).json({
+      total: totalProducts,
+      page: pageNumber,
+      perPage: perPageNumber,
+      data: products,
+    });
+  } catch (error) {
+    res.status(500).send({ error });
+  }
+});
+
 // register user
 app.post("/register", async (req: any, res: any) => {
   const { name, email, password, role_id } = req.body;
