@@ -1,7 +1,9 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { authenticateToken, authorizeRole } from "./middleware";
 import { google } from "googleapis";
+import rateLimit from "express-rate-limit";
+import slowDown from "express-slow-down";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 const express = require("express");
 const dotenv = require("dotenv");
@@ -12,6 +14,21 @@ const app = express();
 dotenv.config();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+const rateLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 100,
+  message: "terlalu banyak request",
+});
+
+const speedLimiter = slowDown({
+  windowMs: 5 * 60 * 1000,
+  delayAfter: 50,
+  delayMs: () => 800,
+});
+
+app.use(rateLimiter);
+app.use(speedLimiter);
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
@@ -36,7 +53,7 @@ app.listen(PORT, () => {
 });
 
 app.get("/api", (req: any, res: any) => {
-  res.send("halo0oooo");
+  res.send("localhost:2000");
 });
 
 // get all
