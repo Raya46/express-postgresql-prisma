@@ -5,6 +5,7 @@ import slowDown from "express-slow-down";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+const compression = require("compression");
 const express = require("express");
 const dotenv = require("dotenv");
 const { PrismaClient } = require("@prisma/client");
@@ -16,17 +17,18 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 const rateLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000,
+  windowMs: 15 * 60 * 1000,
   max: 100,
   message: "terlalu banyak request",
 });
 
 const speedLimiter = slowDown({
-  windowMs: 5 * 60 * 1000,
+  windowMs: 15 * 60 * 1000,
   delayAfter: 50,
   delayMs: () => 800,
 });
 
+app.use(compression());
 app.use(rateLimiter);
 app.use(speedLimiter);
 
