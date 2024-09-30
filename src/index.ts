@@ -4,6 +4,8 @@ import rateLimit from "express-rate-limit";
 import slowDown from "express-slow-down";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { createServer } from "http";
+import { Server as SocketIOServer } from "socket.io";
 
 const compression = require("compression");
 const express = require("express");
@@ -28,6 +30,14 @@ const speedLimiter = slowDown({
   delayMs: () => 800,
 });
 
+const httpServer = createServer(app);
+const io = new SocketIOServer(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
 app.use(compression());
 app.use(rateLimiter);
 app.use(speedLimiter);
@@ -50,8 +60,49 @@ const authorizationUrl = oauth2Client.generateAuthUrl({
 });
 
 const PORT = process.env.PORT;
+
+io.use((socket, next) => {
+  const token = socket.handshake.query.token;
+  if (!token) {
+    return next(new Error("Authentication error"));
+  }
+
+  jwt.verify(token as string, process.env.JWT_SECRET!, (err, decoded) => {
+    if (err) {
+      return next(new Error("Authentication error"));
+    }
+    socket.data.user = decoded;
+    next();
+  });
+});
+
+io.on("connection", (socket) => {
+  console.log("new client connected: ", socket.id);
+  const userId = socket.data.user?.userId;
+  console.log("logged in user: ", userId);
+
+  socket.on("chatMessage", async (message) => {
+    console.log("message received: ", message);
+    const newChat = await prisma.chat.create({
+      data: {
+        message: message,
+        user_id: userId,
+      },
+    });
+    io.emit("chatMessage", { message, user: userId });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("connection disconnected", socket.id);
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`listening to port: ${PORT}`);
+});
+
+httpServer.listen(PORT, () => {
+  console.log(`WebSocket running on: ${PORT}`);
 });
 
 app.get("/api", (req: any, res: any) => {
