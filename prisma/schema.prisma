@@ -21,26 +21,29 @@ model Product {
   description String
 }
 
-model User {
-  id       Int    @id @default(autoincrement())
-  email    String @unique
-  name     String
-  password String
-  role     Role   @relation(fields: [role_id], references: [id])
-  role_id  Int
-  chats    Chat[]
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String
+  users User[]
 }
 
-model Role {
-  id   Int    @id @default(autoincrement())
-  name String
-  user User[]
+model User {
+  id            Int    @id @default(autoincrement())
+  email         String @unique
+  name          String
+  password      String
+  role          Role   @relation(fields: [role_id], references: [id])
+  role_id       Int
+  sentChats     Chat[] @relation("Sender")
+  receivedChats Chat[] @relation("Receiver")
 }
 
 model Chat {
-  id        Int      @id @default(autoincrement())
-  message   String
-  user_id   Int
-  user      User     @relation(fields: [user_id], references: [id])
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  message     String
+  sender_id   Int
+  receiver_id Int
+  sender      User     @relation("Sender", fields: [sender_id], references: [id])
+  receiver    User     @relation("Receiver", fields: [receiver_id], references: [id])
+  createdAt   DateTime @default(now())
 }

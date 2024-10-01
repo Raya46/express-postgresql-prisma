@@ -109,6 +109,39 @@ app.get("/api", (req: any, res: any) => {
   res.send("localhost:2000");
 });
 
+// cara mengakses: /chat/${receiverId}?limit=10${cursor ? `&cursor=${cursor}` : ""}
+app.get("/chat/:receiverId", async (req: any, res: any) => {
+  try {
+    const _receiverId = req.params.receiverId;
+    const _senderId = req.user.userId;
+    const limit = Number(req.query.limit) || 20;
+    const cursor = Number(req.query.cursor) || null;
+
+    if (!_receiverId) res.status(400).send({ error: "receiver tidak valid" });
+    const chatQuery: any = {
+      where: {
+        receiver_id: _receiverId,
+        sender_id: _senderId,
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    };
+
+    if (cursor) chatQuery.where.createdAt = { lt: new Date(cursor) };
+    const chats = await prisma.chat.findMany(chatQuery);
+
+    if (chats.length === 0)
+      return res.status(200).send({ data: [], cursor: null });
+
+    const newCursor = chats[chats.length - 1].createdAt.toISOString();
+
+    res.status(200).send({ data: chats, cursor: newCursor });
+  } catch (error) {
+    console.error("Error fetching chats:", error);
+    res.status(500).send({ error: "Terjadi kesalahan saat mengambil chat" });
+  }
+});
+
 // get all
 app.get("/products", authenticateToken, async (req: any, res: any) => {
   const products = await prisma.product.findMany();
