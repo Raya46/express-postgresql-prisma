@@ -1,4 +1,4 @@
-import { authenticateToken, authorizeRole } from "./middleware";
+import { authenticateToken, authorizeRole } from "./middlewares/middlewareAuth";
 import { google } from "googleapis";
 import rateLimit from "express-rate-limit";
 import slowDown from "express-slow-down";
@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
+import upload from "./middlewares/middlewareUpload";
 
 const compression = require("compression");
 const express = require("express");
@@ -17,6 +18,7 @@ const app = express();
 dotenv.config();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use("/uploads", express.static("uploads"));
 
 const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -108,6 +110,26 @@ httpServer.listen(PORT, () => {
 app.get("/api", (req: any, res: any) => {
   res.send("localhost:2000");
 });
+
+// upload gambar
+app.post(
+  "/upload-product-image",
+  upload.single("image"),
+  async (req: any, res: any) => {
+    try {
+      if (!req.file) {
+        return res.status(400).send({ message: "no file uploaded" });
+      }
+      const imageUrl = `http://localhost:${PORT}/uploads/${req.file.filename}`;
+
+      res
+        .status(200)
+        .send({ message: `image upload successfully=${imageUrl}` });
+    } catch (error) {
+      res.status(500).send({ error: error });
+    }
+  }
+);
 
 // cara mengakses: /chat/${receiverId}?limit=10${cursor ? `&cursor=${cursor}` : ""}
 app.get("/chat/:receiverId", async (req: any, res: any) => {
