@@ -113,18 +113,25 @@ app.get("/api", (req: any, res: any) => {
 
 // upload gambar
 app.post(
-  "/upload-product-image",
+  "/upload-product-image/:productId",
   upload.single("image"),
   async (req: any, res: any) => {
     try {
-      if (!req.file) {
+      const _productId = req.params.productId;
+      if (!req.file)
         return res.status(400).send({ message: "no file uploaded" });
-      }
       const imageUrl = `http://localhost:${PORT}/uploads/${req.file.filename}`;
 
-      res
-        .status(200)
-        .send({ message: `image upload successfully=${imageUrl}` });
+      const productImage = await prisma.product.update({
+        where: {
+          id: Number(_productId),
+          image: imageUrl,
+        },
+      });
+
+      res.status(200).send({
+        message: `image upload successfully=${imageUrl} at ${productImage}`,
+      });
     } catch (error) {
       res.status(500).send({ error: error });
     }
@@ -182,23 +189,38 @@ app.get("/products/:id", authenticateToken, async (req: any, res: any) => {
 });
 
 // post/add product
-app.post("/add-products", authenticateToken, async (req: any, res: any) => {
-  const newProduct = req.body;
+app.post(
+  "/add-products",
+  authenticateToken,
+  upload.single("image"),
+  async (req: any, res: any) => {
+    try {
+      const { name, price, description } = req.body;
+      const imageUrl = req.file
+        ? `http://localhost:${PORT}/uploads/${req.file.filename}`
+        : undefined;
 
-  const product = await prisma.product.create({
-    data: {
-      name: newProduct.name,
-      price: newProduct.price,
-      image: newProduct.image,
-      description: newProduct.description,
-    },
-  });
+      const product = await prisma.product.create({
+        data: {
+          name,
+          price: parseFloat(price),
+          image: imageUrl,
+          description,
+        },
+      });
 
-  res.send({
-    data: product,
-    message: "berhasil create product",
-  });
-});
+      res.status(201).send({
+        data: product,
+        message: imageUrl
+          ? "create product with image"
+          : "create product without image",
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).send({ error: error });
+    }
+  }
+);
 
 // update product
 app.put("/put-product/:id", authenticateToken, async (req: any, res: any) => {
