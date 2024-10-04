@@ -7,6 +7,8 @@ import jwt from "jsonwebtoken";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import upload from "./middlewares/middlewareUpload";
+import path from "path";
+import fs from "fs";
 
 const compression = require("compression");
 const express = require("express");
@@ -250,11 +252,24 @@ app.delete(
   authenticateToken,
   async (req: any, res: any) => {
     const _id = req.params.id;
+    const product = await prisma.product.findUnique({
+      where: {
+        id: _id,
+      },
+    });
     const deletedProduct = await prisma.product.delete({
       where: {
         id: Number(_id),
       },
     });
+    const imagePath = product.image;
+    if (imagePath) {
+      const filePath = path.join(__dirname, "../", imagePath);
+      fs.unlink(filePath, (err) => {
+        if (err) console.error(err);
+        else console.log("success delete image");
+      });
+    }
     res.send({
       data: deletedProduct,
       message: "success delete",
