@@ -14,10 +14,13 @@ const compression = require("compression");
 const express = require("express");
 const dotenv = require("dotenv");
 const { PrismaClient } = require("@prisma/client");
+const helmet = require("helmet");
 
 const prisma = new PrismaClient();
 const app = express();
 dotenv.config();
+app.use(helmet());
+app.disable("x-powered-by");
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
@@ -87,7 +90,7 @@ io.on("connection", (socket) => {
 
   socket.on("chatMessage", async (message) => {
     console.log("message received: ", message);
-    const newChat = await prisma.chat.create({
+    await prisma.chat.create({
       data: {
         message: message,
         user_id: userId,
@@ -143,8 +146,8 @@ app.post(
 // cara mengakses: /chat/${receiverId}?limit=10${cursor ? `&cursor=${cursor}` : ""}
 app.get("/chat/:receiverId", async (req: any, res: any) => {
   try {
-    const _receiverId = req.params.receiverId;
-    const _senderId = req.user.userId;
+    const _receiverId = Number(req.params.receiverId);
+    const _senderId = Number(req.user.userId);
     const limit = Number(req.query.limit) || 20;
     const cursor = Number(req.query.cursor) || null;
 
@@ -181,10 +184,10 @@ app.get("/products", authenticateToken, async (req: any, res: any) => {
 
 // get by id
 app.get("/products/:id", authenticateToken, async (req: any, res: any) => {
-  const _id = req.params.id;
+  const _id = Number(req.params.id);
   const productById = await prisma.product.findUnique({
     where: {
-      id: Number(_id),
+      id: _id,
     },
   });
   res.send(productById);
@@ -200,12 +203,12 @@ app.post(
       const { name, price, description } = req.body;
       const imageUrl = req.file
         ? `http://localhost:${PORT}/uploads/${req.file.filename}`
-        : undefined;
+        : "";
 
       const product = await prisma.product.create({
         data: {
           name,
-          price: parseFloat(price),
+          price,
           image: imageUrl,
           description,
         },
@@ -225,33 +228,63 @@ app.post(
 );
 
 // update product
-app.put("/put-product/:id", authenticateToken, async (req: any, res: any) => {
-  const _id = req.params.id;
-  const newProduct = req.body;
-  const updatedProduct = await prisma.product.update({
-    where: {
-      id: Number(_id),
-    },
-    data: {
-      name: newProduct.name,
-      price: newProduct.price,
-      image: newProduct.image,
-      description: newProduct.description,
-    },
-  });
-
-  res.send({
-    data: updatedProduct,
-    message: "success update",
-  });
-});
+app.put(
+  "/put-product/:id",
+  authenticateToken,
+  upload.single("image"),
+  async (req: any, res: any) => {
+    try {
+      const _id = Number(req.params.id);
+      const { name, price, description } = req.body;
+      const existingProduct = await prisma.product.findUnique({
+        where: {
+          id: _id,
+        },
+      });
+      if (!existingProduct)
+        return res.status(400).send({ message: "product not found" });
+      let newImageUrl = existingProduct.image;
+      if (req.file) {
+        if (existingProduct.image) {
+          const oldImagePath = path.join(
+            __dirname,
+            "../",
+            existingProduct.image
+          );
+          fs.unlink(oldImagePath, (err) => {
+            if (err) console.error(err);
+            else console.log("success remove old image");
+          });
+        }
+        newImageUrl = `http://localhost:${PORT}/uploads/${req.file.filename}`;
+      }
+      const updatedProduct = await prisma.product.update({
+        where: {
+          id: Number(_id),
+        },
+        data: {
+          name,
+          price,
+          image: newImageUrl,
+          description,
+        },
+      });
+      res
+        .status(200)
+        .send({ data: updatedProduct, message: "success update product" });
+    } catch (error) {
+      console.error(error);
+      res.status(400).send({ error: error });
+    }
+  }
+);
 
 // delete product
 app.delete(
   "/delete-product/:id",
   authenticateToken,
   async (req: any, res: any) => {
-    const _id = req.params.id;
+    const _id = Number(req.params.id);
     const product = await prisma.product.findUnique({
       where: {
         id: _id,
@@ -259,7 +292,7 @@ app.delete(
     });
     const deletedProduct = await prisma.product.delete({
       where: {
-        id: Number(_id),
+        id: _id,
       },
     });
     const imagePath = product.image;
