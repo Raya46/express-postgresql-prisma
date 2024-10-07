@@ -13,29 +13,53 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String
+  users User[] @relation("RoleUser")
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String
+  products Product[] @relation("CategoryProduct")
+}
+
 model Product {
-  id          Int    @id @default(autoincrement())
+  id          Int                 @id @default(autoincrement())
   name        String
   price       Float
   image       String
   description String
-}
-
-model Role {
-  id    Int    @id @default(autoincrement())
-  name  String
-  users User[]
+  quantity    Int
+  category    Category            @relation("CategoryProduct", fields: [category_id], references: [id])
+  owner       User                @relation("OwnerProduct", fields: [owner_id], references: [id])
+  streams     UserProductStream[] @relation("ProductStreams")
+  owner_id    Int
+  category_id Int
 }
 
 model User {
-  id            Int    @id @default(autoincrement())
-  email         String @unique
+  id            Int                 @id @default(autoincrement())
+  email         String              @unique
   name          String
   password      String
-  role          Role   @relation(fields: [role_id], references: [id])
+  balance       Float               @default(0)
+  role          Role                @relation("RoleUser", fields: [role_id], references: [id])
   role_id       Int
-  sentChats     Chat[] @relation("Sender")
-  receivedChats Chat[] @relation("Receiver")
+  sentChats     Chat[]              @relation("Sender")
+  receivedChats Chat[]              @relation("Receiver")
+  ownerProduct  Product[]           @relation("OwnerProduct")
+  streams       UserProductStream[] @relation("StreamerStreams")
+}
+
+model UserProductStream {
+  id                Int      @id @default(autoincrement())
+  streamerStream    User     @relation("StreamerStreams", fields: [streamer_id], references: [id])
+  productStream     Product  @relation("ProductStreams", fields: [product_stream_id], references: [id])
+  streamer_id       Int
+  product_stream_id Int
+  createdAt         DateTime @default(now())
 }
 
 model Chat {
@@ -46,4 +70,15 @@ model Chat {
   sender      User     @relation("Sender", fields: [sender_id], references: [id])
   receiver    User     @relation("Receiver", fields: [receiver_id], references: [id])
   createdAt   DateTime @default(now())
+}
+
+model Transaction {
+  id               Int      @id @default(autoincrement())
+  user_id          Int
+  product_id       Int
+  proofTransaction String
+  status           String   @default("pending")
+  totalPrice       Float
+  quantity         Int
+  createdAt        DateTime @default(now())
 }
