@@ -54,12 +54,14 @@ model User {
 }
 
 model UserProductStream {
-  id                Int      @id @default(autoincrement())
-  streamerStream    User     @relation("StreamerStreams", fields: [streamer_id], references: [id])
-  productStream     Product  @relation("ProductStreams", fields: [product_stream_id], references: [id])
+  id                Int       @id @default(autoincrement())
+  streamerStream    User      @relation("StreamerStreams", fields: [streamer_id], references: [id])
+  productStream     Product   @relation("ProductStreams", fields: [product_stream_id], references: [id])
   streamer_id       Int
   product_stream_id Int
-  createdAt         DateTime @default(now())
+  status            String    @default("pending")
+  createdAt         DateTime  @default(now())
+  expiredAt         DateTime?
 }
 
 model Chat {
@@ -72,13 +74,15 @@ model Chat {
   createdAt   DateTime @default(now())
 }
 
+// buy product/topup balance
 model Transaction {
   id               Int      @id @default(autoincrement())
   user_id          Int
-  product_id       Int
+  product_id       Int?
   proofTransaction String
   status           String   @default("pending")
   totalPrice       Float
   quantity         Int
+  type             String
   createdAt        DateTime @default(now())
 }
