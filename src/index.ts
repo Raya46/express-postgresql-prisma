@@ -426,7 +426,6 @@ app.post("/login", async (req: any, res: any) => {
   res.send({ token });
 });
 
-
 // google login
 app.get("/auth/google", (_: any, res: any) => {
   res.redirect(authorizationUrl);
