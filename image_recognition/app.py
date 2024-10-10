@@ -16,7 +16,7 @@ def extract_text(image):
     text = pytesseract.image_to_string(image, config=custom_config)
     return text
 def approve_payment(text):
-    if "berhasil" in text.lower():
+    if "m-transfer:" and "berhasil" in text.lower():
         return True
     return False
 
