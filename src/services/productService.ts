@@ -47,7 +47,9 @@ const updateProduct = async (id: string, data: any, file: any) => {
     where: {
       id: Number(id),
     },
-    data,
+    data: {
+      ...data,
+    },
   });
 };
 

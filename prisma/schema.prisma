@@ -35,8 +35,11 @@ model Product {
   category    Category            @relation("CategoryProduct", fields: [category_id], references: [id])
   owner       User                @relation("OwnerProduct", fields: [owner_id], references: [id])
   streams     UserProductStream[] @relation("ProductStreams")
+  transaction Transaction[]       @relation("ProductTransaction")
   owner_id    Int
   category_id Int
+
+  @@index([name])
 }
 
 model User {
@@ -51,6 +54,15 @@ model User {
   receivedChats Chat[]              @relation("Receiver")
   ownerProduct  Product[]           @relation("OwnerProduct")
   streams       UserProductStream[] @relation("StreamerStreams")
+  transaction   Transaction[]       @relation("UserTransaction")
+
+  @@index([name, email])
+}
+
+enum Status {
+  PENDING
+  REJECTED
+  ACCEPTED
 }
 
 model UserProductStream {
@@ -59,7 +71,7 @@ model UserProductStream {
   productStream     Product   @relation("ProductStreams", fields: [product_stream_id], references: [id])
   streamer_id       Int
   product_stream_id Int
-  status            String    @default("pending")
+  status            Status    @default(PENDING)
   createdAt         DateTime  @default(now())
   expiredAt         DateTime?
 }
@@ -72,15 +84,19 @@ model Chat {
   sender      User     @relation("Sender", fields: [sender_id], references: [id])
   receiver    User     @relation("Receiver", fields: [receiver_id], references: [id])
   createdAt   DateTime @default(now())
+
+  @@index([sender_id, receiver_id])
 }
 
 // buy product/topup balance
 model Transaction {
   id               Int      @id @default(autoincrement())
+  User             User     @relation("UserTransaction", fields: [user_id], references: [id])
+  Product          Product? @relation("ProductTransaction", fields: [product_id], references: [id])
   user_id          Int
   product_id       Int?
   proofTransaction String
-  status           String   @default("pending")
+  status           Status   @default(PENDING)
   totalPrice       Float
   quantity         Int
   type             String
