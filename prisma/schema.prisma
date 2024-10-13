@@ -65,6 +65,11 @@ enum Status {
   ACCEPTED
 }
 
+enum typeTransaction {
+  SPEND
+  TOPUP
+}
+
 model UserProductStream {
   id                Int       @id @default(autoincrement())
   streamerStream    User      @relation("StreamerStreams", fields: [streamer_id], references: [id])
@@ -90,15 +95,15 @@ model Chat {
 
 // buy product/topup balance
 model Transaction {
-  id               Int      @id @default(autoincrement())
-  User             User     @relation("UserTransaction", fields: [user_id], references: [id])
-  Product          Product? @relation("ProductTransaction", fields: [product_id], references: [id])
+  id               Int             @id @default(autoincrement())
+  User             User            @relation("UserTransaction", fields: [user_id], references: [id])
+  Product          Product?        @relation("ProductTransaction", fields: [product_id], references: [id])
   user_id          Int
   product_id       Int?
   proofTransaction String
-  status           Status   @default(PENDING)
+  status           Status          @default(PENDING)
   totalPrice       Float
   quantity         Int
-  type             String
-  createdAt        DateTime @default(now())
+  type             typeTransaction
+  createdAt        DateTime        @default(now())
 }

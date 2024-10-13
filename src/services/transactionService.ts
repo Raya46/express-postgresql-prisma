@@ -13,7 +13,7 @@ const getTransactions = async (_userId: string) => {
       },
       where: {
         user_id: Number(_userId),
-        type: "topup",
+        type: "TOPUP",
       },
     }),
     prisma.transaction.aggregate({
@@ -22,7 +22,7 @@ const getTransactions = async (_userId: string) => {
       },
       where: {
         user_id: Number(_userId),
-        type: "spend",
+        type: "SPEND",
       },
     }),
   ]);
