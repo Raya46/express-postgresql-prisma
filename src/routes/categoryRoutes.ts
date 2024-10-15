@@ -13,7 +13,7 @@ import {
 const router = Router();
 
 router.post(
-  "/add-category",
+  "/create",
   authenticateToken,
   authorizeRole("admin"),
   createCategory

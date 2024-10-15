@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { authenticateToken } from "../middlewares/middlewareAuth";
+import {
+  authenticateToken,
+  authorizeRole,
+} from "../middlewares/middlewareAuth";
 import {
   createRole,
   deleteRole,
@@ -9,9 +12,9 @@ import {
 
 const router = Router();
 
-router.post("/add-role", authenticateToken, createRole);
-router.get("/", authenticateToken, getRole);
-router.put("/:id", updateRole);
-router.delete("/:id", deleteRole);
+router.post("/create", authorizeRole("admin"), authenticateToken, createRole);
+router.get("/", authorizeRole("admin"), authenticateToken, getRole);
+router.put("/:id", authorizeRole("admin"), updateRole);
+router.delete("/:id", authorizeRole("admin"), deleteRole);
 
 export default router;
