@@ -3,8 +3,9 @@ import transactionService from "../services/transactionService";
 
 export const getTransactions = async (req: Request, res: Response) => {
   try {
-    const { transactions, topUp, spend, total }: any =
-      transactionService.getTransactions(req.params.id);
+    const { transactions, total }: any = transactionService.getTransactions(
+      req.params.id
+    );
     res.status(200).json({
       transactions: transactions,
       total: total,
