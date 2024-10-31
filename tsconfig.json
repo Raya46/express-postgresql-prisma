@@ -22,13 +22,6 @@
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false,
-
-    "strictPropertyInitialization": false,  
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "esModuleInterop": true,
-    "experimentalDecorators": true,  
-    "emitDecoratorMetadata": true    
+    "noPropertyAccessFromIndexSignature": false
   }
 }

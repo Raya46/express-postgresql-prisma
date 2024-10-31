@@ -1,6 +1,6 @@
 import http from "http";
-import app from "./app";
-import { setupWebSocket } from "./services/webSocketService";
+import app from "./src/app";
+import { setupWebSocket } from "./src/services/webSocketService";
 
 const PORT = process.env.PORT || 3000;
 const WS_PORT = process.env.WS_PORT;

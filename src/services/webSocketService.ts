@@ -2,6 +2,7 @@ import { Server as SocketIOServer } from "socket.io";
 import http from "http";
 import prisma from "../utils/database";
 import jwt from "jsonwebtoken";
+import { connect } from "http2";
 
 export const setupWebSocket = (server: http.Server) => {
   const io = new SocketIOServer(server, {
@@ -31,15 +32,16 @@ export const setupWebSocket = (server: http.Server) => {
     const userId = socket.data.user?.userId;
     console.log("logged in user: ", userId);
 
-    socket.on("chatMessage", async (message) => {
+    socket.on("chatMessage", async (message: any) => {
       console.log("message received: ", message);
       await prisma.chat.create({
         data: {
           message: message,
-          user_id: userId,
+          sender: { connect: { id: userId } },
+          receiver: { connect: { id: message.receiverId } },
         },
       });
-      io.emit("chatMessage", { message, user: userId });
+      io.emit("chatMessage", { message, sender_id: userId });
     });
 
     socket.on("disconnect", () => {
